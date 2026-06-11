@@ -1,0 +1,40 @@
+version: "3.9"
+
+services:
+  # ─────────────── Keycloak ───────────────
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.3
+    container_name: syncboard-keycloak
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    command: start-dev --import-realm
+    volumes:
+      - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json
+    ports:
+      - "8080:8080"
+    networks:
+      - syncboard-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/health/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ─────────────── WebSocket Server ───────────────
+  ws-server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: syncboard-ws
+    ports:
+      - "4000:4000"
+    environment:
+      PORT: 4000
+    networks:
+      - syncboard-net
+    restart: unless-stopped
+
+networks:
+  syncboard-net:
+    driver: bridge
